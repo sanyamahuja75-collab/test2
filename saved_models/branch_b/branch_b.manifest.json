@@ -1,0 +1,60 @@
+{
+  "manifest_version": "1.1.0",
+  "model_name": "branch_b_host_wdt",
+  "model_version": "1.0.0",
+  "checkpoint_file": "host_wdt.pt",
+  "_reconciled": "2026-09-11: architecture reconciled against the tensor shapes actually stored in host_wdt.pt. num_encoder_layers corrected 2 -> 3 (checkpoint contains transformer.layers.0/1/2); time_encoder documented as Linear(1, d_model) + cos, matching time_encoder.linear.{weight,bias}.",
+  "architecture": {
+    "model_type": "HostWorldDynamicsTransformer",
+    "d_latent": 12,
+    "d_model": 64,
+    "nhead": 4,
+    "num_encoder_layers": 3,
+    "dim_feedforward": 128,
+    "activation": "gelu",
+    "norm_first": true,
+    "time_encoder": {
+      "type": "ContinuousTimeEncoding",
+      "parameterisation": "cos(Linear(1, d_model)(delta_t))",
+      "state_dict_keys": ["time_encoder.linear.weight", "time_encoder.linear.bias"]
+    },
+    "out_head": {"type": "Linear-GELU-Dropout-Linear", "hidden": 128, "out_dim": 12, "target": "residual delta latent"},
+    "lateral_interaction": {"type": "MultiHostInteractionLayer", "d_latent": 12, "n_heads": 2},
+    "infiltration_head": {
+      "model_type": "InfiltrationRiskHead",
+      "d_latent": 12,
+      "hidden_dim": 32,
+      "aggregation": "peak_severity_max"
+    }
+  },
+  "feature_schema": {
+    "version": "1.0.0",
+    "tgne_latent_dim": 12,
+    "observable_only": true,
+    "zero_label_leakage": true
+  },
+  "state_dict_keys": {
+    "world_model": "wdt_state_dict",
+    "risk_head": "risk_head_state_dict"
+  },
+  "io_contract": {
+    "input": "h_history [B, 5, 12] (TGNE latent history)",
+    "output_latent": "h_future [B, 8, 12]",
+    "output_risk": "step_risks [B, 8] in [0,1]"
+  },
+  "temporal_contract": {
+    "mode": "live_micro",
+    "delta_t_sec": 2.0,
+    "history_steps": 5,
+    "forecast_horizon_steps": 8,
+    "forecast_horizon_seconds": 16.0,
+    "stabilize_horizon": true
+  },
+  "training_metadata": {
+    "dataset": "unified_telemetry_v3",
+    "split_policy": "ScientificSplitManager_disjoint_scenarios",
+    "random_seed": 42,
+    "optimizer": "AdamW",
+    "lr": 0.0005
+  }
+}

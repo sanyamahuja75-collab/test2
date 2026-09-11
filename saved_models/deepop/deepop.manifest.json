@@ -1,0 +1,65 @@
+{
+  "manifest_version": "1.1.0",
+  "model_name": "deepop_cwa_forecast_decoder",
+  "model_version": "1.0.0",
+  "checkpoint_file": "cwa_forecast_decoder.pt",
+  "_reconciled": "2026-09-11: architecture reconciled against the tensor shapes actually stored in cwa_forecast_decoder.pt. vocab_size corrected 24 -> 10 (token_embed.weight is (10,72), fc_out.weight (10,72), prototypes (10,12), and the checkpoint itself records vocab_size=10, which equals deepop_decoder.joint_vocab: 3 special tokens + 7 network-observable macro techniques). nhead corrected 4 -> 6 and window_size_w replaced by the real multi-scale window_sizes [2,4,8]: CausalWindowAttention requires n_heads % len(window_sizes) == 0 and d_model % n_heads == 0, which with d_model=72 and 3 scales admits only 6 heads.",
+  "architecture": {
+    "model_type": "DeepOPForecastDecoder",
+    "d_latent": 12,
+    "d_model": 72,
+    "vocab_size": 10,
+    "num_decoder_layers": 2,
+    "nhead": 6,
+    "dim_feedforward": 144,
+    "max_seq_len": 16,
+    "window_sizes": [2, 4, 8],
+    "attention_type": "CausalWindowAttention_ONW",
+    "direct_residual_head": true,
+    "prototype_matching_head": true,
+    "future_context_gate": true
+  },
+  "vocabulary": {
+    "source": "deepop_decoder.joint_vocab.get_joint_vocab(network_observable_only=True)",
+    "size": 10,
+    "tokens": [
+      "<PAD>",
+      "<BOS>",
+      "<EOS>",
+      "Benign.None",
+      "C2.T1071",
+      "CredentialAccess.T1110",
+      "Exfiltration.T1005",
+      "Impact.T1498",
+      "InitialAccess.T1190",
+      "Recon.T1595"
+    ]
+  },
+  "feature_schema": {
+    "version": "1.0.0",
+    "tgne_latent_dim": 12,
+    "future_state_conditioning": "WDT_predicted_and_oracle"
+  },
+  "state_dict_keys": {
+    "decoder": "decoder_state_dict"
+  },
+  "io_contract": {
+    "memory": "h_future [B, 8, 12] — the Branch B rollout, used directly as cross-attention memory",
+    "observed_token": "int token id in [0, 10)",
+    "output": "pred_tokens [B, 8] + per-step token probabilities"
+  },
+  "temporal_contract": {
+    "mode": "live_micro",
+    "delta_t_sec": 2.0,
+    "forecast_horizon_steps": 8,
+    "forecast_horizon_seconds": 16.0
+  },
+  "training_metadata": {
+    "dataset": "unified_telemetry_v3",
+    "split_policy": "ScientificSplitManager_disjoint_scenarios",
+    "wdt_noise_inoculation": true,
+    "random_seed": 42,
+    "optimizer": "AdamW",
+    "lr": 0.001
+  }
+}
